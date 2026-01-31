@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { GoogleGenAI, Type, SchemaType } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 export interface Question {
   questionText: string;
@@ -14,7 +14,12 @@ export class ExamService {
   private ai: GoogleGenAI;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env['API_KEY'] || '' });
+    // Safely retrieve API Key to prevent crash if 'process' is undefined in browser
+    const apiKey = (typeof process !== 'undefined' && process.env && process.env['API_KEY']) 
+      ? process.env['API_KEY'] 
+      : '';
+      
+    this.ai = new GoogleGenAI({ apiKey: apiKey });
   }
 
   async generateQuestions(topic: string): Promise<Question[]> {
@@ -65,8 +70,8 @@ export class ExamService {
       // Return fallback data in case of error to prevent crash
       return [
         {
-          questionText: "Gagal memuat soal AI. Ibukota Indonesia adalah?",
-          options: ["Jakarta", "Bandung", "Surabaya", "Medan"],
+          questionText: "Gagal memuat soal AI. Pastikan API Key terkonfigurasi.",
+          options: ["Coba Lagi", "Periksa Koneksi", "Reload", "Hubungi Admin"],
           correctAnswerIndex: 0
         }
       ];

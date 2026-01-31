@@ -29,24 +29,35 @@
 <script type="importmap">
 {
   "imports": {
-    "rxjs": "https://esm.sh/rxjs@^7.8.2?conditions=es2015",
-    "rxjs/operators": "https://esm.sh/rxjs@^7.8.2/operators?conditions=es2015",
-    "rxjs/ajax": "https://esm.sh/rxjs@^7.8.2/ajax?conditions=es2015",
-    "rxjs/webSocket": "https://esm.sh/rxjs@^7.8.2/webSocket?conditions=es2015",
-    "rxjs/testing": "https://esm.sh/rxjs@^7.8.2/testing?conditions=es2015",
-    "rxjs/fetch": "https://esm.sh/rxjs@^7.8.2/fetch?conditions=es2015",
-    "@angular/compiler": "https://esm.sh/@angular/compiler@^21.1.2?external=rxjs",
-    "@angular/platform-browser": "https://esm.sh/@angular/platform-browser@^21.1.2?external=rxjs",
-    "@angular/core": "https://esm.sh/@angular/core@^21.1.2?external=rxjs",
-    "@google/genai": "https://esm.sh/@google/genai@^1.39.0?external=rxjs",
-    "@angular/common": "https://esm.sh/@angular/common@^21.1.2?external=rxjs",
-    "@angular/forms": "https://esm.sh/@angular/forms@^21.1.2?external=rxjs"
+    "rxjs": "https://esm.sh/rxjs@^7.8.1?conditions=es2015",
+    "rxjs/operators": "https://esm.sh/rxjs@^7.8.1/operators?conditions=es2015",
+    "rxjs/ajax": "https://esm.sh/rxjs@^7.8.1/ajax?conditions=es2015",
+    "rxjs/webSocket": "https://esm.sh/rxjs@^7.8.1/webSocket?conditions=es2015",
+    "rxjs/testing": "https://esm.sh/rxjs@^7.8.1/testing?conditions=es2015",
+    "rxjs/fetch": "https://esm.sh/rxjs@^7.8.1/fetch?conditions=es2015",
+    "@angular/compiler": "https://esm.sh/@angular/compiler@^19.0.0?external=rxjs",
+    "@angular/platform-browser": "https://esm.sh/@angular/platform-browser@^19.0.0?external=rxjs",
+    "@angular/core": "https://esm.sh/@angular/core@^19.0.0?external=rxjs",
+    "@google/genai": "https://esm.sh/@google/genai@^0.2.1?external=rxjs",
+    "@angular/common": "https://esm.sh/@angular/common@^19.0.0?external=rxjs",
+    "@angular/forms": "https://esm.sh/@angular/forms@^19.0.0?external=rxjs"
   }
 }
 </script>
 </head>
 <body>
-  <app-root></app-root>
+  <app-root>
+    <!-- Fallback content while Angular loads -->
+    <div class="fixed inset-0 flex items-center justify-center bg-gray-100 text-gray-500">
+      <div class="text-center">
+        <svg class="animate-spin h-8 w-8 mx-auto mb-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p>Memuat Aplikasi...</p>
+      </div>
+    </div>
+  </app-root>
   <script type="module" src="./index.tsx"></script>
 </body>
 </html>
