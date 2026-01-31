@@ -1,0 +1,5 @@
+{
+  "name": "Aplikasi Ujian Pintar AI",
+  "description": "Aplikasi ujian dinamis yang menghasilkan soal otomatis menggunakan AI berdasarkan topik yang Anda pilih. Dibuat dengan Angular dan Gemini API.",
+  "requestFramePermissions": []
+}

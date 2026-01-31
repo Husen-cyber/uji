@@ -1,0 +1,312 @@
+import { Component, signal, computed, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ExamService, Question } from './services/exam.service';
+
+type AppState = 'setup' | 'loading' | 'quiz' | 'result';
+
+@Component({
+  selector: 'app-root',
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div class="min-h-screen flex items-center justify-center p-4 bg-gray-100">
+      
+      <!-- Container -->
+      <div class="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden min-h-[500px] flex flex-col">
+        
+        <!-- HEADER -->
+        <header class="bg-blue-600 p-6 text-white text-center relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-full bg-blue-700 opacity-20 transform -skew-y-3"></div>
+          <h1 class="text-2xl font-bold relative z-10">
+            @if (state() === 'setup') { Aplikasi Ujian Pintar }
+            @else if (state() === 'quiz') { Ujian: {{ topic() }} }
+            @else if (state() === 'result') { Hasil Ujian }
+            @else { Memuat... }
+          </h1>
+          <p class="text-blue-100 text-sm mt-1 relative z-10">Powered by Gemini AI</p>
+        </header>
+
+        <!-- CONTENT BODY -->
+        <div class="flex-grow p-6 flex flex-col">
+          
+          <!-- VIEW: SETUP -->
+          @if (state() === 'setup') {
+            <div class="flex flex-col h-full justify-center space-y-8 animate-fade-in">
+              <div class="text-center space-y-2">
+                <h2 class="text-xl font-semibold text-gray-800">Mau ujian tentang apa hari ini?</h2>
+                <p class="text-gray-500">AI akan membuatkan soal unik khusus untuk Anda.</p>
+              </div>
+
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Topik Custom</label>
+                  <div class="flex gap-2">
+                    <input 
+                      type="text" 
+                      [(ngModel)]="topic" 
+                      (keyup.enter)="startQuiz()"
+                      placeholder="Contoh: Biologi Sel, Sejarah Majapahit, Javascript..." 
+                      class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    >
+                    <button 
+                      (click)="startQuiz()"
+                      class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition shadow-sm"
+                    >
+                      Mulai
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Atau pilih topik populer:</label>
+                  <div class="flex flex-wrap gap-2">
+                    @for (t of quickTopics; track t) {
+                      <button 
+                        (click)="startQuiz(t)"
+                        class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium transition"
+                      >
+                        {{ t }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- VIEW: LOADING -->
+          @if (state() === 'loading') {
+            <div class="flex flex-col items-center justify-center h-full space-y-6 animate-pulse">
+              <div class="relative w-20 h-20">
+                <div class="absolute w-full h-full border-4 border-gray-200 rounded-full"></div>
+                <div class="absolute w-full h-full border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+              </div>
+              <div class="text-center">
+                <h3 class="text-lg font-medium text-gray-900">Sedang menyusun soal...</h3>
+                <p class="text-gray-500 text-sm">AI sedang memikirkan pertanyaan terbaik untuk topik "{{ topic() }}"</p>
+              </div>
+            </div>
+          }
+
+          <!-- VIEW: QUIZ -->
+          @if (state() === 'quiz') {
+            <div class="flex flex-col h-full">
+              <!-- Progress Bar -->
+              <div class="mb-6">
+                <div class="flex justify-between text-xs font-semibold text-gray-500 mb-1">
+                  <span>Soal {{ currentQuestionIndex() + 1 }} dari {{ questions().length }}</span>
+                  <span>{{ progress() | number:'1.0-0' }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" [style.width.%]="progress()"></div>
+                </div>
+              </div>
+
+              <!-- Question -->
+              <div class="flex-grow">
+                <h2 class="text-xl font-bold text-gray-800 mb-6 leading-relaxed">
+                  {{ currentQuestion().questionText }}
+                </h2>
+
+                <div class="space-y-3">
+                  @for (option of currentQuestion().options; track $index) {
+                    <button 
+                      (click)="selectAnswer($index)"
+                      [class]="'w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex items-center group ' + getOptionClass($index)"
+                    >
+                      <span class="w-8 h-8 rounded-full border-2 flex items-center justify-center mr-4 text-sm font-bold
+                        {{ userAnswers()[currentQuestionIndex()] === $index ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300 text-gray-500 group-hover:border-blue-400' }}">
+                        {{ ['A', 'B', 'C', 'D'][$index] }}
+                      </span>
+                      <span class="text-gray-700 font-medium">{{ option }}</span>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Navigation Buttons -->
+              <div class="mt-8 flex justify-between border-t border-gray-100 pt-6">
+                <button 
+                  (click)="prevQuestion()" 
+                  [disabled]="currentQuestionIndex() === 0"
+                  class="px-6 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Kembali
+                </button>
+                
+                <button 
+                  (click)="nextQuestion()"
+                  [disabled]="!canGoNext()"
+                  class="px-8 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-200 transition"
+                >
+                  {{ isLastQuestion() ? 'Selesai' : 'Lanjut' }}
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- VIEW: RESULT -->
+          @if (state() === 'result') {
+            <div class="flex flex-col h-full animate-fade-in">
+              
+              <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-blue-50 mb-4">
+                  <span class="text-4xl font-extrabold text-blue-600">{{ score() }}</span>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">
+                  @if (score() >= 80) { Luar Biasa! 🎉 }
+                  @else if (score() >= 60) { Bagus Sekali! 👍 }
+                  @else { Tetap Semangat! 💪 }
+                </h2>
+                <p class="text-gray-500">Kamu menjawab benar pada {{ score() / 20 }} dari {{ questions().length }} soal.</p>
+              </div>
+
+              <div class="flex-grow overflow-y-auto pr-2 space-y-4">
+                @for (q of questions(); track $index) {
+                  <div class="p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
+                    <p class="text-sm text-gray-500 mb-1">Soal {{ $index + 1 }}</p>
+                    <p class="font-medium text-gray-800 mb-3">{{ q.questionText }}</p>
+                    
+                    <div class="space-y-2 text-sm">
+                      @for (opt of q.options; track optIndex; let optIndex = $index) {
+                        <div [class]="'p-2 rounded border ' + getResultClass($index, optIndex)">
+                          <div class="flex justify-between items-center">
+                            <span>{{ opt }}</span>
+                            @if (q.correctAnswerIndex === optIndex) {
+                              <span class="text-green-600 font-bold">✓ Benar</span>
+                            } @else if (userAnswers()[$index] === optIndex) {
+                              <span class="text-red-600 font-bold">✗ Kamu</span>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <div class="mt-6 pt-4 border-t border-gray-100">
+                <button 
+                  (click)="resetApp()"
+                  class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition"
+                >
+                  Coba Tes Baru
+                </button>
+              </div>
+
+            </div>
+          }
+
+        </div>
+      </div>
+    </div>
+  `,
+  styles: []
+})
+export class AppComponent {
+  examService = inject(ExamService);
+
+  // State
+  state = signal<AppState>('setup');
+  topic = signal<string>('');
+  questions = signal<Question[]>([]);
+  currentQuestionIndex = signal<number>(0);
+  userAnswers = signal<number[]>([]); // Stores index of selected answer for each question
+  score = signal<number>(0);
+  
+  // Computed values
+  currentQuestion = computed(() => this.questions()[this.currentQuestionIndex()]);
+  progress = computed(() => {
+    if (this.questions().length === 0) return 0;
+    return ((this.currentQuestionIndex() + 1) / this.questions().length) * 100;
+  });
+  isLastQuestion = computed(() => this.currentQuestionIndex() === this.questions().length - 1);
+  canGoNext = computed(() => this.userAnswers()[this.currentQuestionIndex()] !== undefined);
+
+  // Predefined topics for quick start
+  quickTopics = ['Pengetahuan Umum', 'Sejarah Indonesia', 'Matematika Dasar', 'Teknologi Informasi', 'Bahasa Inggris'];
+
+  startQuiz(customTopic?: string) {
+    const selectedTopic = customTopic || this.topic();
+    
+    if (!selectedTopic.trim()) {
+      alert('Silakan masukkan topik ujian terlebih dahulu.');
+      return;
+    }
+
+    this.topic.set(selectedTopic);
+    this.state.set('loading');
+    
+    this.examService.generateQuestions(selectedTopic).then(qs => {
+      this.questions.set(qs);
+      this.userAnswers.set(new Array(qs.length).fill(undefined)); // Initialize answers
+      this.currentQuestionIndex.set(0);
+      this.state.set('quiz');
+    }).catch(err => {
+      console.error(err);
+      this.state.set('setup');
+      alert('Gagal membuat soal. Silakan coba lagi.');
+    });
+  }
+
+  selectAnswer(optionIndex: number) {
+    const answers = [...this.userAnswers()];
+    answers[this.currentQuestionIndex()] = optionIndex;
+    this.userAnswers.set(answers);
+  }
+
+  nextQuestion() {
+    if (this.isLastQuestion()) {
+      this.finishQuiz();
+    } else {
+      this.currentQuestionIndex.update(i => i + 1);
+    }
+  }
+
+  prevQuestion() {
+    if (this.currentQuestionIndex() > 0) {
+      this.currentQuestionIndex.update(i => i - 1);
+    }
+  }
+
+  finishQuiz() {
+    let calculatedScore = 0;
+    const qs = this.questions();
+    const ans = this.userAnswers();
+
+    qs.forEach((q, index) => {
+      if (ans[index] === q.correctAnswerIndex) {
+        calculatedScore++;
+      }
+    });
+
+    this.score.set(Math.round((calculatedScore / qs.length) * 100));
+    this.state.set('result');
+  }
+
+  resetApp() {
+    this.topic.set('');
+    this.state.set('setup');
+    this.questions.set([]);
+    this.currentQuestionIndex.set(0);
+    this.score.set(0);
+  }
+
+  getOptionClass(optionIndex: number): string {
+    const selected = this.userAnswers()[this.currentQuestionIndex()] === optionIndex;
+    return selected 
+      ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500' 
+      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50';
+  }
+
+  getResultClass(qIndex: number, optIndex: number): string {
+    const question = this.questions()[qIndex];
+    const userAnswer = this.userAnswers()[qIndex];
+    const isCorrect = question.correctAnswerIndex === optIndex;
+    const isSelected = userAnswer === optIndex;
+
+    if (isCorrect) return 'bg-green-100 border-green-500 text-green-800 font-medium';
+    if (isSelected && !isCorrect) return 'bg-red-100 border-red-500 text-red-800';
+    return 'bg-gray-50 border-gray-200 opacity-60';
+  }
+}
